@@ -296,14 +296,26 @@ class CornersProblem(search.SearchProblem):
         space)
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return (self.startingPosition,self.corners)
 
     def isGoalState(self, state: Any):
         """
         Returns whether this search state is a goal state of the problem.
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        """
+        state={
+            position:(x,y)
+            corners:((a,b),(c,d),(e,f)...)
+        }
+        """
+
+
+
+
+
+        #isGoal = len(self.corners) == 0
+        return len(state[1]) == 0
 
     def getSuccessors(self, state: Any):
         """
@@ -315,7 +327,7 @@ class CornersProblem(search.SearchProblem):
             state, 'action' is the action required to get there, and 'stepCost'
             is the incremental cost of expanding to that successor
         """
-
+        position=state[0]
         successors = []
         for action in [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.WEST]:
             # Add a successor state to the successor list if the action is legal
@@ -326,7 +338,18 @@ class CornersProblem(search.SearchProblem):
             #   hitsWall = self.walls[nextx][nexty]
 
             "*** YOUR CODE HERE ***"
+            x, y =position
+            dx, dy = Actions.directionToVector(action)
+            nextx, nexty = int(x + dx), int(y + dy)
 
+
+
+            if not self.walls[nextx][nexty]:
+
+                cost =1
+                new_corners = tuple(x for x in state[1] if x != (nextx,nexty))
+                nextState = ((nextx, nexty), new_corners)
+                successors.append((nextState, action, cost))
         self._expanded += 1 # DO NOT CHANGE
         return successors
 
@@ -361,7 +384,29 @@ def cornersHeuristic(state: Any, problem: CornersProblem):
     walls = problem.walls # These are the walls of the maze, as a Grid (game.py)
 
     "*** YOUR CODE HERE ***"
-    return 0 # Default to trivial solution
+    def dis_cal(p1,p2):
+        return abs(p1[0]-p2[0])+abs(p1[1]-p2[1])
+    def nearest(pos,p_list):
+        dis = 999999
+        target = None
+        for p in p_list:
+            temp = dis_cal(pos, p)
+            if temp < dis:
+                dis = temp
+                target = p
+        return target,dis
+
+
+    position, corners = state
+
+    dis=0
+    while len(corners)>0:
+        position,temp_dis=nearest(position,corners)
+        dis+=temp_dis
+        corners=tuple(x for x in corners if x!=position)
+
+
+    return dis # Default to trivial solution
 
 class AStarCornersAgent(SearchAgent):
     "A SearchAgent for FoodSearchProblem using A* and your foodHeuristic"
@@ -455,7 +500,59 @@ def foodHeuristic(state: Tuple[Tuple, List[List]], problem: FoodSearchProblem):
     """
     position, foodGrid = state
     "*** YOUR CODE HERE ***"
-    return 0
+
+
+    dis_cal=util.manhattanDistance
+    foods=foodGrid.asList()
+    if len(foods)==0:
+        return 0
+    elif len(foods)==1:
+        return dis_cal(position,foods[0])
+    elif len(foods)<=4:
+        max_temp=0
+        for p1 in foods:
+            for p2 in set(foods)-set([p1]):
+                temp = dis_cal(p1, p2)
+                if temp>max_temp:
+                    max_temp=temp
+                    pair=(p1,p2)
+        p1,p2=pair
+        dis=dis_cal(p1,p2)
+        d1 = dis_cal(position, p1)
+        d2 = dis_cal(position, p2)
+        dis += min(d1, d2)
+        return dis
+    else:
+        max_dis=0
+        pair=None
+        for p1 in foods:
+            d1 = dis_cal(position, p1)
+            for p2 in set(foods)-set([p1]):
+                temp12=dis_cal(p1,p2)
+                d2 = dis_cal(position, p2)
+                for p3 in set(foods)-set([p1,p2]):
+                    d3 = dis_cal(position, p3)
+                    temp13=dis_cal(p1,p3)
+                    temp23=dis_cal(p2,p3)
+                    temp= max (temp12+temp23,temp13+temp23,temp12+temp13)
+                    if temp>max_dis:
+                        max_dis=temp
+                        temp_list = (temp12, temp13, temp23)
+                        d_list =(d1,d2,d3)
+
+        temp12,temp13,temp23=temp_list
+        d1,d2,d3=d_list
+        if temp12>=temp13 and temp12>=temp23:
+            dis=temp13+temp23+min(d1,d2)
+        if temp13>=temp12 and temp13>=temp23:
+            dis=temp12+temp23+min(d1,d3)
+        if temp23>=temp12 and temp23>=temp13:
+            dis=temp12+temp13+min(d2,d3)
+
+        return dis
+
+
+
 
 class ClosestDotSearchAgent(SearchAgent):
     "Search for all food using a sequence of searches"
@@ -486,7 +583,7 @@ class ClosestDotSearchAgent(SearchAgent):
         problem = AnyFoodSearchProblem(gameState)
 
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return search.breadthFirstSearch(problem)
 
 class AnyFoodSearchProblem(PositionSearchProblem):
     """
@@ -522,7 +619,10 @@ class AnyFoodSearchProblem(PositionSearchProblem):
         x,y = state
 
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+
+        return self.food[x][y]
+
+
 
 def mazeDistance(point1: Tuple[int, int], point2: Tuple[int, int], gameState: pacman.GameState) -> int:
     """
