@@ -118,7 +118,7 @@ class SearchAgent(Agent):
         if self.actions == None:
             self.actions = []
         totalCost = problem.getCostOfActions(self.actions)
-        print('Path found with total cost of %d in %.1f seconds' % (totalCost, time.time() - starttime))
+        print('Path found with total cost of %d in %.5f seconds' % (totalCost, time.time() - starttime))
         if '_expanded' in dir(problem): print('Search nodes expanded: %d' % problem._expanded)
 
     def getAction(self, state):
@@ -303,18 +303,6 @@ class CornersProblem(search.SearchProblem):
         Returns whether this search state is a goal state of the problem.
         """
         "*** YOUR CODE HERE ***"
-        """
-        state={
-            position:(x,y)
-            corners:((a,b),(c,d),(e,f)...)
-        }
-        """
-
-
-
-
-
-        #isGoal = len(self.corners) == 0
         return len(state[1]) == 0
 
     def getSuccessors(self, state: Any):
@@ -342,10 +330,7 @@ class CornersProblem(search.SearchProblem):
             dx, dy = Actions.directionToVector(action)
             nextx, nexty = int(x + dx), int(y + dy)
 
-
-
             if not self.walls[nextx][nexty]:
-
                 cost =1
                 new_corners = tuple(x for x in state[1] if x != (nextx,nexty))
                 nextState = ((nextx, nexty), new_corners)
@@ -384,28 +369,36 @@ def cornersHeuristic(state: Any, problem: CornersProblem):
     walls = problem.walls # These are the walls of the maze, as a Grid (game.py)
 
     "*** YOUR CODE HERE ***"
+    dic={}
     def dis_cal(p1,p2):
-        return abs(p1[0]-p2[0])+abs(p1[1]-p2[1])
+        if (p1,p2) in dic.keys():
+            return dic[(p1,p2)]
+        else:
+            dis=util.manhattanDistance(p1, p2)
+            dic[(p1, p2)]=dis
+            return dis
     def nearest(pos,p_list):
+        if len(p_list)==0:
+            return None,0
         dis = 999999
         target = None
         for p in p_list:
-            temp = dis_cal(pos, p)
+            temp =dis_cal(pos,p)
             if temp < dis:
                 dis = temp
                 target = p
         return target,dis
 
-
     position, corners = state
-
-    dis=0
-    while len(corners)>0:
-        position,temp_dis=nearest(position,corners)
-        dis+=temp_dis
-        corners=tuple(x for x in corners if x!=position)
-
-
+    dis = 0
+    task=1
+    if task==1:
+        while len(corners)>0:
+            position,temp_dis=nearest(position,corners)
+            dis+=temp_dis
+            corners=tuple(x for x in corners if x!=position)
+    else:
+        _,dis=nearest(position,corners)
     return dis # Default to trivial solution
 
 class AStarCornersAgent(SearchAgent):
@@ -500,56 +493,28 @@ def foodHeuristic(state: Tuple[Tuple, List[List]], problem: FoodSearchProblem):
     """
     position, foodGrid = state
     "*** YOUR CODE HERE ***"
+    if 'dis' not in problem.heuristicInfo.keys():
+        problem.heuristicInfo['dis']={}
+    def dis_cal(p1,p2,temp_problem):
+        if (p1,p2) in temp_problem.heuristicInfo['dis'].keys():
+            return temp_problem.heuristicInfo['dis'][(p1,p2)]
+            #return mazeDistance(p1, p2,temp_problem.startingGameState)
+        else:
+            dis=mazeDistance(p1, p2,temp_problem.startingGameState)
+            problem.heuristicInfo['dis'][(p1, p2)]=dis
+            return dis
 
 
-    dis_cal=util.manhattanDistance
-    foods=foodGrid.asList()
-    if len(foods)==0:
+
+    pos, food = state
+    foodpos = food.asList()
+    fcost = [0] * len(foodpos)
+    if len(foodpos) == 0:
         return 0
-    elif len(foods)==1:
-        return dis_cal(position,foods[0])
-    elif len(foods)<=4:
-        max_temp=0
-        for p1 in foods:
-            for p2 in set(foods)-set([p1]):
-                temp = dis_cal(p1, p2)
-                if temp>max_temp:
-                    max_temp=temp
-                    pair=(p1,p2)
-        p1,p2=pair
-        dis=dis_cal(p1,p2)
-        d1 = dis_cal(position, p1)
-        d2 = dis_cal(position, p2)
-        dis += min(d1, d2)
-        return dis
-    else:
-        max_dis=0
-        pair=None
-        for p1 in foods:
-            d1 = dis_cal(position, p1)
-            for p2 in set(foods)-set([p1]):
-                temp12=dis_cal(p1,p2)
-                d2 = dis_cal(position, p2)
-                for p3 in set(foods)-set([p1,p2]):
-                    d3 = dis_cal(position, p3)
-                    temp13=dis_cal(p1,p3)
-                    temp23=dis_cal(p2,p3)
-                    temp= max (temp12+temp23,temp13+temp23,temp12+temp13)
-                    if temp>max_dis:
-                        max_dis=temp
-                        temp_list = (temp12, temp13, temp23)
-                        d_list =(d1,d2,d3)
-
-        temp12,temp13,temp23=temp_list
-        d1,d2,d3=d_list
-        if temp12>=temp13 and temp12>=temp23:
-            dis=temp13+temp23+min(d1,d2)
-        if temp13>=temp12 and temp13>=temp23:
-            dis=temp12+temp23+min(d1,d3)
-        if temp23>=temp12 and temp23>=temp13:
-            dis=temp12+temp13+min(d2,d3)
-
-        return dis
+    for i in range(len(foodpos)):
+        fcost[i] = dis_cal(pos, foodpos[i],problem)
+    Max = max(fcost)
+    return Max
 
 
 
